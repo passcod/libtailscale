@@ -447,7 +447,7 @@ impl Listener {
 impl Drop for Listener {
     fn drop(&mut self) {
         unsafe {
-            sys::tailscale_listener_close(self.handle);
+            sys::tailscale_close(self.handle);
         }
     }
 }

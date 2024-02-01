@@ -9,14 +9,14 @@ an IP address on a tailnet, entirely from userspace.
 ## Requirements
 
 * Rust compiler & Cargo
-* Go v1.20 or higher
+* Go v1.21 or higher
 
 ## Getting started
 
 After running `cargo init` add the following lines to your `Cargo.toml` file:
 
 ```toml
-tsnet = "0.1.0"
+tsnet = { version = "0.1.0", git = "https://github.com/passcod/libtailscale" }
 ```
 
 ## Development

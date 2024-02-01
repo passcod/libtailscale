@@ -19,6 +19,8 @@ After running `cargo init` add the following lines to your `Cargo.toml` file:
 tsnet = { version = "0.1.0", git = "https://github.com/passcod/libtailscale" }
 ```
 
+[API documentation](https://passcod.github.io/libtailscale/tsnet/)
+
 ## Development
 
 Build with

@@ -4,9 +4,7 @@ package platform
 import "C"
 
 import (
-	"fmt"
 	"syscall"
-	"unsafe"
 )
 
 // simulate socketpair by creating two connected IPv4 sockets at a random port
@@ -56,21 +54,16 @@ func GetSocketPair() ([2]int, error) {
 }
 
 func CloseSocket(fd int) error {
-	fmt.Println("Closing socket", fd)
 	err := syscall.Close(fd)
 	errCode := syscall.GetLastError()
-	// Handle the error or print it for debugging
-	fmt.Printf("Error closing handle: %v\n", errCode)
 	return err
 }
 
 func ReadSocket(fd int, buf *[256]byte) {
-	fmt.Println("Reading socket", fd)
 	syscall.Read(fd, (*buf)[:])
 }
 
 func SendMessage(fd int, p []byte, connFd int, to syscall.Sockaddr, flags int) error {
-	fmt.Println("Writing socket", fd)
 	_, err := syscall.Write(fd, p)
 	return err
 }

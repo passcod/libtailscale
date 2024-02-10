@@ -9,7 +9,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu
+          - macos
+          - windows
+
+    runs-on: ${{ matrix.os }}-latest
 
     steps:
     - uses: actions/checkout@v3

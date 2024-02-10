@@ -5,7 +5,6 @@
 package main
 
 //#include "errno.h"
-//#include "socketpair_handler.h"
 import "C"
 
 import (

@@ -1,13 +1,6 @@
-// If your file name follows the structure name_{GOOS}_{GOARCH}.go or
-// simply name_{GOOS}.go,
-// then it will be compiled only under the target OS+architecture
-// or OS+any architecture respectively without needing a special comment
 package platform
 
-//#cgo CFLAGS: -g -Wall
-//#cgo LDFLAGS: -lws2_32
 //#include "errno.h"
-//#include "../socketpair_handler.h"
 import "C"
 
 import (
@@ -16,13 +9,50 @@ import (
 	"unsafe"
 )
 
-func GetSocketPair() ([]syscall.Handle, error) {
-	fds := make([]syscall.Handle, 2)
-	fds_pt := C.get_socket_pair()
-	fds_array := (*[2]C.SOCKET)(unsafe.Pointer(fds_pt))[:]
-	fds[0] = syscall.Handle(uintptr(fds_array[0]))
-	fds[1] = syscall.Handle(uintptr(fds_array[1]))
-	return fds, nil
+// simulate socketpair by creating two connected IPv4 sockets at a random port
+func GetSocketPair() ([2]int, error) {
+	listen_sock, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	err = syscall.Bind(listen_sock, &syscall.SockaddrInet4{Port: 0, Addr: [4]byte{127, 0, 0, 1}})
+	if err != nil {
+		return nil, err
+	}
+
+	err = syscall.Listen(listen_sock, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the effective port number
+	sockaddr, err = syscall.GetSockName(listen_sock)
+	if err != nil {
+		return nil, err
+	}
+
+	client_sock, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	err = syscall.Connect(client_sock, sockaddr)
+	if err != nil {
+		return nil, err
+	}
+
+	send_sock, _, err = syscall.Accept(listen_sock)
+	if err != nil {
+		return nil, err
+	}
+
+	err = syscall.Close(listen_sock)
+	if err != nil {
+		return nil, err
+	}
+
+	return [2]int{send_sock, client_sock}, nil
 }
 
 func CloseSocket(fd syscall.Handle) error {

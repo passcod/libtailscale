@@ -55,7 +55,7 @@ func GetSocketPair() ([2]int, error) {
 	return [2]int{send_sock, client_sock}, nil
 }
 
-func CloseSocket(fd syscall.Handle) error {
+func CloseSocket(fd int) error {
 	fmt.Println("Closing socket", fd)
 	err := syscall.Close(fd)
 	errCode := syscall.GetLastError()
@@ -64,17 +64,17 @@ func CloseSocket(fd syscall.Handle) error {
 	return err
 }
 
-func ReadSocket(fd syscall.Handle, buf *[256]byte) {
+func ReadSocket(fd int, buf *[256]byte) {
 	fmt.Println("Reading socket", fd)
 	syscall.Read(fd, (*buf)[:])
 }
 
-func SendMessage(fd syscall.Handle, p []byte, connFd int, to syscall.Sockaddr, flags int) error {
+func SendMessage(fd int, p []byte, connFd int, to syscall.Sockaddr, flags int) error {
 	fmt.Println("Writing socket", fd)
 	_, err := syscall.Write(fd, p)
 	return err
 }
 
-func Shutdown(fd syscall.Handle, how int) error {
+func Shutdown(fd int, how int) error {
 	return syscall.Shutdown(fd, how)
 }

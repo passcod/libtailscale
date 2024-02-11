@@ -2,7 +2,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "tailscale.h"
+
+#ifdef __APPLE__ || __linux__
 #include <sys/socket.h>
+#elif _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -47,6 +56,7 @@ int tailscale_listen(tailscale sd, const char* network, const char* addr, tailsc
 }
 
 int tailscale_accept(tailscale_listener ld, tailscale_conn* conn_out) {
+#ifdef __APPLE__ || __linux__
 	struct msghdr msg = {0};
 
 	char mbuf[256];
@@ -68,6 +78,28 @@ int tailscale_accept(tailscale_listener ld, tailscale_conn* conn_out) {
 	int fd = *(int*)data;
 	*conn_out = fd;
 	return 0;
+#elif _WIN32
+	char mbuf[256];
+	WSABUF wsaBuf;
+	DWORD bytesReceived;
+	DWORD flags = 0;
+	SOCKET fd;
+
+	wsaBuf.buf = mbuf;
+	wsaBuf.len = sizeof(mbuf);
+
+	if (WSARecv(ld, &wsaBuf, 1, &bytesReceived, &flags, NULL, NULL) == SOCKET_ERROR) {
+		return -1;
+	}
+
+	// Extract the socket descriptor from the received control information
+	if (WSAGetOverlappedResult(ld, NULL, &bytesReceived, FALSE, &flags) == SOCKET_ERROR) {
+		return -1;
+	}
+
+	fd = *(SOCKET *)mbuf;
+	*conn_out = fd;
+#endif
 }
 
 int tailscale_set_dir(tailscale sd, const char* dir) {

@@ -9,15 +9,21 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu
+          - macos
+          - windows
+
+    runs-on: ${{ matrix.os }}-latest
 
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
       with:
-        go-version-file: "go.mod"
+        go-version-file: go.mod
 
     - name: Run build & test
       run: |

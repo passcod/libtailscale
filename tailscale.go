@@ -17,6 +17,8 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/tailscale/libtailscale/platform"
+
 	"tailscale.com/hostinfo"
 	"tailscale.com/tsnet"
 	"tailscale.com/types/logger"
@@ -184,7 +186,8 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 	// feed an fd for the connection through the listener. This lets C use
 	// epoll on the tailscale_listener to know if it should call
 	// tailscale_accept, which avoids a blocking call on the far side.
-	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
+	fds, err := platform.GetSocketPair()
+
 	if err != nil {
 		return s.recErr(err)
 	}
@@ -205,7 +208,7 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 		listeners.mu.Lock()
 		if tsLn, ok := listeners.m[fdC]; ok && tsLn.ln == ln {
 			delete(listeners.m, fdC)
-			syscall.Close(sp)
+			platform.CloseSocket(sp)
 		}
 		listeners.mu.Unlock()
 
@@ -218,7 +221,7 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 		//
 		// TODO: would using os.NewFile avoid a locked up thread?
 		var buf [256]byte
-		syscall.Read(sp, buf[:])
+		platform.ReadSocket(sp, &buf)
 		cleanup()
 	}()
 	go func() {
@@ -236,8 +239,9 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 				netConn.Close()
 				continue
 			}
-			rights := syscall.UnixRights(int(connFd))
-			err = syscall.Sendmsg(sp, nil, rights, nil, 0)
+
+			err = platform.SendMessage(sp, nil, int(connFd), nil, 0)
+
 			if err != nil {
 				// We handle sp being closed in the read goroutine above.
 				if s.s.Logf != nil {
@@ -246,7 +250,7 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 				netConn.Close()
 				// fallthrough to close connFd, then continue Accept()ing
 			}
-			syscall.Close(int(connFd)) // now owned by recvmsg
+			platform.CloseSocket(int(connFd)) // now owned by recvmsg
 		}
 	}()
 
@@ -255,7 +259,7 @@ func TsnetListen(sd C.int, network, addr *C.char, listenerOut *C.int) C.int {
 }
 
 func newConn(s *server, netConn net.Conn, connOut *C.int) error {
-	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
+	fds, err := platform.GetSocketPair()
 	if err != nil {
 		return err
 	}
@@ -290,7 +294,7 @@ func newConn(s *server, netConn net.Conn, connOut *C.int) error {
 		defer connCleanup()
 		var b [1 << 16]byte
 		io.CopyBuffer(r, netConn, b[:])
-		syscall.Shutdown(int(r.Fd()), syscall.SHUT_WR)
+		platform.Shutdown(int(r.Fd()), syscall.SHUT_WR)
 		if cr, ok := netConn.(interface{ CloseRead() error }); ok {
 			cr.CloseRead()
 		}
@@ -299,7 +303,7 @@ func newConn(s *server, netConn net.Conn, connOut *C.int) error {
 		defer connCleanup()
 		var b [1 << 16]byte
 		io.CopyBuffer(netConn, r, b[:])
-		syscall.Shutdown(int(r.Fd()), syscall.SHUT_RD)
+		platform.Shutdown(int(r.Fd()), syscall.SHUT_RD)
 		if cw, ok := netConn.(interface{ CloseWrite() error }); ok {
 			cw.CloseWrite()
 		}
